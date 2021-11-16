@@ -14,7 +14,7 @@ val runtime = zio.Runtime.default
 /**
  * Solves the puzzle that returns the first repeated letter in a given word
  */
-object Solver {
+object Solver:
 
   // recursively searches for the letter that is already present in a set
   @tailrec private def check(word: List[Char], container: Set[Char] = Set.empty)
@@ -39,9 +39,9 @@ object Solver {
     for {
       res <- doCheck(word.toList)
     } yield res
-}
 
-object HelloWorld extends App {
+
+object HelloWorld extends App:
   // Create HTTP route
   val app = HttpApp.collectM {
     case req @ Method.GET -> Root / "find_repeated" => req.url.queryParams.get("word") match {
@@ -53,4 +53,3 @@ object HelloWorld extends App {
   // Run it like any simple app
   override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] =
     Server.start(8090, app.silent).exitCode
-}
