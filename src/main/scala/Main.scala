@@ -1,12 +1,17 @@
-import zhttp.http._
-import zhttp.service._
+import zhttp.http.*
+import zhttp.service.*
 import zhttp.service.Server
-
-import zio.console._
+import zio.console.*
 import zio.ZIO
-import zio._
-import java.io.IOException
+import zio.*
 
+import java.io.IOException
+import alleycats.std.set._
+import cats._
+import cats.data._
+import cats.implicits._
+import cats.syntax.semigroup._
+import scala.language.higherKinds
 import scala.annotation.tailrec
 
 val runtime = zio.Runtime.default
@@ -18,14 +23,13 @@ object Solver:
 
   // recursively searches for the letter that is already present in a set
   @tailrec private def check(word: List[Char], container: Set[Char] = Set.empty)
-  : Option[Char] = word match {
-    case x :: _ if container contains x => Some(x)
-    case x :: xs => {
-      val newSet = container + x
-      check(xs, newSet)
-    }
+                            (implicit m : Traverse[Set])
+  : Option[Char] =  word match {
+    case x :: _ if m.exists(container) {_ === x} => Some(x)
+    case x :: xs => check(xs, container.combine(Set(x)))
     case Nil => None
   }
+
 
   // just isolates the logic so return is trnslated into a presentable string
   private def doCheck(word: List[Char]) : zio.UIO[String] =
