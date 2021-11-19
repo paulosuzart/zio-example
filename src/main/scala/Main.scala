@@ -25,12 +25,13 @@ object Solver:
 
   // recursively searches for the letter that is already present in a set
   @tailrec private def check[F[_], A: Eq](word: List[A], container: F[A])
-                                         (implicit n: Applicative[F],
+                                         (using n: Applicative[F],
                                           c: Semigroup[F[A]],
                                           m: Traverse[F])
   : Option[A] = word match {
+
     case x :: _ if m.exists(container) {_ === x } => x.some
-    case x :: xs => check(xs, container.combine(n.pure(x)))
+    case x :: xs => check(xs, container |+| n.pure(x))
     case Nil => none
   }
 
