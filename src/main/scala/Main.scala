@@ -6,15 +6,19 @@ import zio.ZIO
 import zio.*
 
 import java.io.IOException
-import alleycats.std.set._
-import cats._
-import cats.data._
-import cats.implicits._
-import cats.syntax.semigroup._
-import cats.syntax.traverse._
-import cats.syntax.applicative._
+import alleycats.std.set.*
+import cats.*
+import cats.data.*
+import cats.implicits.*
+import cats.syntax.semigroup.*
+import cats.syntax.traverse.*
+import cats.syntax.applicative.*
+import io.bpp.taskqueue.TaskQueue
+import zio.duration._
+
 import scala.language.higherKinds
 import scala.annotation.tailrec
+
 
 val runtime = zio.Runtime.default
 
@@ -29,8 +33,9 @@ object Solver:
                                           c: Semigroup[F[A]],
                                           m: Traverse[F])
   : Option[A] = word match {
-
-    case x :: _ if m.exists(container) {_ === x } => x.some
+    case x :: _ if m.exists(container) {
+      _ === x
+    } => x.some
     case x :: xs => check(xs, container |+| n.pure(x))
     case Nil => none
   }
@@ -60,5 +65,7 @@ object HelloWorld extends App :
   }
 
   // Run it like any simple app
-  override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] =
-    Server.start(8090, app.silent).exitCode
+  override def run(args: List[String]) =
+    TaskQueue.app()
+      .provideSomeLayer(TaskQueue.consumer ++ zio.console.Console.live)
+      .exitCode
