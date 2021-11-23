@@ -199,7 +199,7 @@
         "platform": {
             "name": "jvm",
             "config": {
-                "home": "/home/paul/.sdkman/candidates/java/11.0.8.hs-adpt",
+                "home": "/home/paul/.sdkman/candidates/java/17.0.1-oracle",
                 "options": [
                     "-Duser.dir=/home/paul/workspace/zio-example/project"
                 ]

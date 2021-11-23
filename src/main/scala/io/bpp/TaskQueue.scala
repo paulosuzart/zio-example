@@ -3,26 +3,52 @@ package io.bpp
 import zio._
 import zio.clock.Clock
 import zio.duration._
-import zio.ZLayer, zio.ZManaged, zio.blocking.Blocking, zio.clock.Clock, zio.console.putStrLn, zio.Ref
+import zio.ZLayer, zio.ZManaged, zio.blocking.Blocking, zio.clock.Clock, zio.console.putStrLn,
+zio.Ref
 import zio.stream.ZTransducer
-import zio.kafka.consumer.{ Consumer, ConsumerSettings, CommittableRecord }
+import zio.kafka.consumer.{Consumer, ConsumerSettings, CommittableRecord}
 import zio.kafka.consumer._
 import zio.kafka.serde._
+import zio.console.Console
 
 package taskqueue {
-
-  import zio.stream.ZSink
-
-  import java.time.Instant
-  case class Leasable(id : String, nextLeaseAt : Instant, currentAttemp: Int, leased : Boolean)
-  sealed trait TaskQueueCommand
-
-  case class Offer(id: String, namespace: String, payload : Array[Byte])
-  case class Lease(namespaces: List[String], batchSize: Int)
-  case class Ack(id: String)
   case class Entry(key: String, v: String)
 
+  type TaskQueue = Has[TaskQueue.Service]
+  type GlobalSet = Has[Ref[Map[String, Entry]]]
+
   object TaskQueue {
+
+    val storeLayer: ULayer[GlobalSet] = ZLayer.fromEffect(ZRef.make(Map.empty[String, Entry]))
+    val any2 : ZLayer[GlobalSet, Nothing, GlobalSet] = ZLayer.requires[GlobalSet]
+
+    trait Service {
+      def handle(record: CommittableRecord[String, String]): UIO[Unit]
+    }
+
+    val any: ZLayer[TaskQueue, Nothing, TaskQueue] = ZLayer.requires[TaskQueue]
+
+    val live: URLayer[Console & GlobalSet, TaskQueue] =
+      ZLayer.fromServices[Console.Service, Ref[Map[String, Entry]], TaskQueue.Service] {
+        (console: Console.Service, globalSet: Ref[Map[String, Entry]]) =>
+          new Service {
+            override def handle(
+                c: CommittableRecord[String, String]
+            ): UIO[Unit] = for {
+              _ <- globalSet.update(current =>
+                (
+                  current + (c.record.key -> Entry(c.record.key, c.record.value))
+                )
+              )
+              set <- globalSet.get
+              _   <- console.putStrLn(s"Current entries: ${set}").orDie
+            } yield ()
+          }
+      }
+
+    def handle(record: CommittableRecord[String, String]): URIO[TaskQueue, Unit] =
+      ZIO.accessM(_.get.handle(record))
+
     val settings: ConsumerSettings =
       ConsumerSettings(List("localhost:9092", "localhost:9093"))
         .withGroupId("group")
@@ -32,45 +58,34 @@ package taskqueue {
     val consumerManaged: ZManaged[Clock with Blocking, Throwable, Consumer] =
       Consumer.make(settings)
 
-    val consumer: ZLayer[Clock with Blocking, Throwable, Has[Consumer]] =
+    val consumer: ZLayer[Clock & Blocking, Throwable, Has[Consumer]] =
       ZLayer.fromManaged(consumerManaged)
 
-
-    // Safe in Concurrent Environment
-    def request(c: CommittableRecord[String, String], counter: Ref[Set[Entry]]) = {
-      for {
-        _ <- counter.modify(current => (current + Entry(c.record.key, c.record.value), current + Entry(c.record.key, c.record.value)))
-        nrn <- counter.get
-        _ <- putStrLn(s"Set now contains ${nrn}")
-      } yield c.offset
-    }
-
-    def run(counter: Ref[Set[Entry]]) = Consumer.subscribeAnd(Subscription.topics("leases"))
+    val run: ZIO[Has[Consumer] & Console & TaskQueue & Clock, Throwable, Unit] = Consumer
+      .subscribeAnd(Subscription.topics("leases"))
       .plainStream(Serde.string, Serde.string)
       .tap(cr => putStrLn(s"Record key: ${cr.record.key}, value: ${cr.record.value}"))
-      .tap(cr => request(cr, counter))
+      .tap(TaskQueue.handle(_))
       .map(cf => cf.offset)
       .aggregateAsync(Consumer.offsetBatches)
       .mapM(_.commit)
       .runDrain
-    
-    def logger(counter: Ref[Set[Entry]]) = for {
-      x <- counter.get
-      _ <- putStrLn(s"Current Set: ${x}")
-    } yield ()
-    
-    def app() = {
+
+    // def logger(): URIO[GlobalSet, Unit] = for {
+    //   x <- ZIO.accessMGlobalSet](_.get)
+    //   _ <- putStrLn(s"Current Set: ${x}").orDie
+    // } yield ()
+
+    val app: ZIO[Has[Consumer] & Console & TaskQueue & Clock, Throwable, Unit] = {
       val spaced = Schedule.spaced(5.seconds)
       for {
-      c <- Ref.make(Set.empty[Entry])
-      fiber <- logger(c).schedule(spaced).fork
-      _ <- run(c)
-      _ <- fiber.join 
-    } yield ()
+        //set <- ZIO.access[GlobalSet](_.get)
+        // fiber <- logger(sent).schedule(spaced).fork
+        _ <- run
+        //_     <- fiber.join
+      } yield ()
     }
 
   }
 
 }
-
-

@@ -33,3 +33,7 @@ classes/
 
 # Visual Studio Code
 .vscode
+
+
+.metals/
+**/.bloop
