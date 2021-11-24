@@ -33,15 +33,10 @@ package taskqueue {
           new Service {
             override def handle(
                 c: CommittableRecord[String, String]
-            ): UIO[Unit] = for {
-              _ <- globalSet.update(current =>
-                (
-                  current + (c.record.key -> Entry(c.record.key, c.record.value))
-                )
-              )
-              set <- globalSet.get
-              _   <- console.putStrLn(s"Current entries: ${set}").orDie
-            } yield ()
+            ): UIO[Unit] = ZIO
+              .fromOption(Option(c.value))
+              .flatMap(_ => globalSet.update(_ + (c.key -> Entry(c.key, c.value))))
+              .orElse(globalSet.update(_.removed(c.key)))
           }
       }
 
