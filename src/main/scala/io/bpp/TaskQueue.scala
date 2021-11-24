@@ -19,8 +19,7 @@ package taskqueue {
 
   object TaskQueue {
 
-    val storeLayer: ULayer[GlobalSet] = ZLayer.fromEffect(ZRef.make(Map.empty[String, Entry]))
-    val any2 : ZLayer[GlobalSet, Nothing, GlobalSet] = ZLayer.requires[GlobalSet]
+    val storeLayer = ZRef.make(Map.empty[String, Entry]).toLayer
 
     trait Service {
       def handle(record: CommittableRecord[String, String]): UIO[Unit]
@@ -71,18 +70,17 @@ package taskqueue {
       .mapM(_.commit)
       .runDrain
 
-    // def logger(): URIO[GlobalSet, Unit] = for {
-    //   x <- ZIO.accessMGlobalSet](_.get)
-    //   _ <- putStrLn(s"Current Set: ${x}").orDie
-    // } yield ()
+    val logger: URIO[GlobalSet & Console, Unit] = for {
+      x <- ZIO.access[GlobalSet](_.get)
+      _ <- putStrLn(s"Current Set: ${x}").orDie
+    } yield ()
 
-    val app: ZIO[Has[Consumer] & Console & TaskQueue & Clock, Throwable, Unit] = {
+    val app: ZIO[Has[Consumer] & TaskQueue & GlobalSet & Console & Clock, Throwable, Unit] = {
       val spaced = Schedule.spaced(5.seconds)
       for {
-        //set <- ZIO.access[GlobalSet](_.get)
-        // fiber <- logger(sent).schedule(spaced).fork
-        _ <- run
-        //_     <- fiber.join
+        fiber <- logger.schedule(spaced).fork
+        _     <- run
+        _     <- fiber.join
       } yield ()
     }
 
