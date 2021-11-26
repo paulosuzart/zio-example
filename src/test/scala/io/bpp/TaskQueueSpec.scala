@@ -2,6 +2,7 @@ package io.bpp
 
 import io.bpp.taskqueue.Entry
 import io.bpp.taskqueue.TaskQueue
+import io.bpp.taskqueue.GlobalSet
 import zio.test.DefaultRunnableSpec
 import zio.ZRef
 import zio.test._
@@ -13,9 +14,8 @@ import zio.console.Console
 
 import zio.test.Assertion.{isEmpty, equalTo}
 import zio.test.TestAspect.sequential
-import org.scalatest._
 
-import io.bpp.taskqueue.GlobalSet
+
 
 object TaskQueueSpec extends DefaultRunnableSpec {
   import TaskQueue._
