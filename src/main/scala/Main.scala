@@ -3,7 +3,7 @@ import zio.ZIO
 import zio.*
 
 import java.io.IOException
-import io.bpp.taskqueue.{TaskQueue, GlobalSet}
+import io.bpp.taskqueue.{GlobalSet, TaskQueue}
 import zio.duration._
 
 import scala.language.higherKinds
@@ -19,7 +19,7 @@ object Solver extends zio.App:
 
   // Run it like any simple app
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, ExitCode] = {
-    var l1 : ULayer[TaskQueue] = (Console.live ++ TaskQueue.storeLayer) >>> TaskQueue.live
+    var l1: ULayer[TaskQueue] = (Console.live ++ TaskQueue.storeLayer) >>> TaskQueue.live
     val env =
       TaskQueue.consumer ++ l1 ++ TaskQueue.storeLayer
     TaskQueue.app.provideCustomLayer(env).exitCode

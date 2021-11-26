@@ -6,7 +6,7 @@ import zio.duration._
 import zio.ZLayer, zio.ZManaged, zio.blocking.Blocking, zio.clock.Clock, zio.console.putStrLn,
 zio.Ref
 import zio.stream.ZTransducer
-import zio.kafka.consumer.{Consumer, ConsumerSettings, CommittableRecord}
+import zio.kafka.consumer.{CommittableRecord, Consumer, ConsumerSettings}
 import zio.kafka.consumer._
 import zio.kafka.serde._
 import zio.console.Console
