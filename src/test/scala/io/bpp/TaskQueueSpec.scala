@@ -12,10 +12,8 @@ import zio.kafka.consumer.Offset
 import zio.ZIO
 import zio.console.Console
 
-import zio.test.Assertion.{isEmpty, equalTo}
+import zio.test.Assertion.{equalTo, isEmpty}
 import zio.test.TestAspect.sequential
-
-
 
 object TaskQueueSpec extends DefaultRunnableSpec {
   import TaskQueue._
